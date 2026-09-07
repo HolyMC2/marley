@@ -161,6 +161,8 @@ healthcare.ObservationWidget = class {
 
 	init_field_group(obs_data, wrapper) {
 		var me = this;
+		me._is_rendering_result_field = me._is_rendering_result_field || {};
+		me._is_rendering_result_field[obs_data.name] = true;
 		var default_input = "";
 		if (
 			["Range", "Ratio", "Quantity", "Numeric"].includes(
@@ -206,7 +208,10 @@ healthcare.ObservationWidget = class {
 					fieldtype: fieldtype,
 					options: options,
 					read_only: 1 ? obs_data.status == "Approved" : 0,
-					change: s => {
+					change: () => {
+						if (me._is_rendering_result_field[obs_data.name]) {
+							return;
+						}
 						me.frm.dirty();
 						me.set_result_n_name(obs_data.name);
 					},
@@ -286,6 +291,9 @@ healthcare.ObservationWidget = class {
 		});
 		me[obs_data.name].make();
 		me.set_values(this, obs_data);
+		setTimeout(() => {
+			me._is_rendering_result_field[obs_data.name] = false;
+		}, 0);
 	}
 
 	set_values(th, obs_data) {
@@ -368,9 +376,12 @@ healthcare.ObservationWidget = class {
 			});
 		}
 
+		const note_icon_href = document.getElementById("icon-small-message")
+			? "#icon-small-message"
+			: "#icon-message-square";
 		let note_html = `<div><span class="add-note-observation-btn btn btn-link"
 			id="add-note-observation-btn-${obs_data.name}">
-			<svg class="icon icon-sm"><use xlink:href="#icon-small-message"></use></svg>
+			<svg class="icon icon-sm"><use xlink:href="${note_icon_href}"></use></svg>
 			</span>`;
 		note_html += `</div>`;
 		me[obs_data.name].get_field("note_button").html(note_html);
@@ -527,6 +538,7 @@ healthcare.ObservationWidget = class {
 		var d = new frappe.ui.Dialog({
 			title: __(type),
 			static: true,
+			size: "large",
 			fields: [
 				{
 					label: "Observation",

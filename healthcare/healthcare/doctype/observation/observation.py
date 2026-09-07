@@ -14,14 +14,22 @@ from erpnext.setup.doctype.terms_and_conditions.terms_and_conditions import (
 	get_terms_and_conditions,
 )
 
+DAYS_PER_AGE_TYPE = {"Years": 365.2425, "Months": 30.436875, "Days": 1}
+
 
 class Observation(Document):
+	@property
+	def sales_invoice_status(self):
+		if self.sales_invoice:
+			return frappe.db.get_value("Sales Invoice", self.sales_invoice, "status")
+
 	def validate(self):
 		self.set_age()
 		self.set_result_time()
 		self.set_status()
 		self.reference = get_observation_reference(self)
 		self.validate_input()
+		self.sanitize_input()
 
 	def on_update(self):
 		set_diagnostic_report_status(self)
@@ -97,7 +105,14 @@ class Observation(Document):
 		return False
 
 	def component_has_result(self):
-		component_obs = frappe.db.get_all("Observation", {"parent_observation": self.name}, pluck="name")
+		component_obs = frappe.db.get_all(
+			"Observation",
+			{
+				"parent_observation": self.name,
+				"docstatus": ["!=", 2],
+			},
+			pluck="name",
+		)
 		for obs in component_obs:
 			obs_doc = frappe.get_doc("Observation", obs)
 			if obs_doc.has_component:
@@ -109,6 +124,12 @@ class Observation(Document):
 
 		return True
 
+	def is_ready_for_approval(self):
+		if self.has_component:
+			return self.component_has_result()
+
+		return self.has_result()
+
 	def validate_input(self):
 		if self.permitted_data_type in ["Quantity", "Numeric"]:
 			if self.result_data and not is_numbers_with_exceptions(self.result_data):
@@ -118,24 +139,34 @@ class Observation(Document):
 					)
 				)
 
+	def sanitize_input(self):
+		html_fields = ["result_text", "result_interpretation", "note"]
+		for field in html_fields:
+			value = self.get(field)
+			if value:
+				self.set(field, frappe.utils.sanitize_html(value))
+
 	def render_templates(self):
 		if self.result_template and not self.result_text:
-			terms_and_conditions = frappe.get_doc("Terms and Conditions", self.result_template)
-
-			if terms_and_conditions.terms:
-				self.result_text = frappe.render_template(terms_and_conditions.terms, self.as_dict())
+			self.result_text = get_terms_and_conditions(self.result_template, self.as_dict())
 
 		if self.interpretation_template and not self.result_interpretation:
-			terms_and_conditions = frappe.get_doc("Terms and Conditions", self.interpretation_template)
-
-			if terms_and_conditions.terms:
-				self.result_interpretation = frappe.render_template(
-					terms_and_conditions.terms, self.as_dict()
-				)
+			self.result_interpretation = get_terms_and_conditions(
+				self.interpretation_template, self.as_dict()
+			)
 
 
 @frappe.whitelist()
-def get_observation_details(docname):
+def get_observation_details(docname: str) -> tuple[list[dict], int]:
+	observation = get_root_observations(docname)
+
+	out_data, obs_length = aggregate_and_return_observation_data(observation)
+
+	return out_data, obs_length
+
+
+def get_root_observations(docname):
+	"""Observations of a Diagnostic Report that are not components of another Observation"""
 	reference = frappe.get_value("Diagnostic Report", docname, ["docname", "ref_doctype"], as_dict=True)
 	observation = []
 
@@ -175,9 +206,7 @@ def get_observation_details(docname):
 			order_by="creation",
 		)
 
-	out_data, obs_length = aggregate_and_return_observation_data(observation)
-
-	return out_data, obs_length
+	return observation
 
 
 def aggregate_and_return_observation_data(observations):
@@ -273,32 +302,41 @@ def get_observation_reference(doc):
 	display_reference = ""
 
 	for child in template_doc.observation_reference_range:
-		if not child.applies_to == "All":
-			if not child.applies_to == doc.gender:
-				continue
-		if child.age == "Range":
-			day_from = day_to = 0
-			if child.from_age_type == "Months":
-				day_from = float(child.age_from) * 30.436875
-			elif child.from_age_type == "Years":
-				day_from = float(child.age_from) * 365.2425
-			elif child.from_age_type == "Days":
-				day_from = float(child.age_from)
-
-			if child.to_age_type == "Months":
-				day_to = float(child.age_to) * 30.436875
-			elif child.to_age_type == "Years":
-				day_to = float(child.age_to) * 365.2425
-			elif child.to_age_type == "Days":
-				day_to = float(child.age_to)
-
-			if doc.days and float(day_from) <= float(doc.days) <= float(day_to):
-				display_reference += set_reference_string(child)
-
-		elif child.age == "All" or not doc.days:
+		if reference_applies_to_patient(child, doc) and reference_matches_age(child, doc):
 			display_reference += set_reference_string(child)
 
 	return display_reference
+
+
+def reference_applies_to_patient(child, doc):
+	if child.applies_to == "All":
+		return True
+	return child.applies_to == doc.gender
+
+
+def reference_matches_age(child, doc):
+	missing_days = doc.days is None or doc.days == ""
+	if child.age != "Range":
+		return child.age == "All" or missing_days
+
+	if missing_days:
+		return False
+
+	day_from = age_value_in_days(child.age_from, child.from_age_type)
+	day_to = age_value_in_days(child.age_to, child.to_age_type)
+	if day_from is None or day_to is None:
+		return False
+
+	return day_from <= float(doc.days) <= day_to
+
+
+def age_value_in_days(value, age_type):
+	if value in (None, "") or age_type not in DAYS_PER_AGE_TYPE:
+		return None
+	try:
+		return float(value) * DAYS_PER_AGE_TYPE[age_type]
+	except (ValueError, TypeError):
+		return None
 
 
 def set_reference_string(child):
@@ -332,7 +370,7 @@ def edit_observation(observation: str, data_type: str, result: str) -> None:
 
 
 @frappe.whitelist()
-def add_observation(**kwargs):
+def add_observation(**kwargs: str) -> str:
 	observation_doc = frappe.new_doc("Observation")
 	observation_doc.posting_datetime = now_datetime()
 	observation_doc.patient = kwargs.get("patient")
@@ -358,7 +396,7 @@ def add_observation(**kwargs):
 
 
 @frappe.whitelist()
-def record_observation_result(values):
+def record_observation_result(values: str) -> None:
 	values = json.loads(values)
 	if values:
 		values = [dict(t) for t in {tuple(d.items()) for d in values}]
@@ -443,7 +481,7 @@ def record_observation_result(values):
 
 
 @frappe.whitelist()
-def add_note(note, observation):
+def add_note(note: str, observation: str) -> None:
 	if note and observation:
 		frappe.db.set_value("Observation", observation, "note", note)
 
@@ -466,7 +504,7 @@ def is_numbers_with_exceptions(value):
 
 
 @frappe.whitelist()
-def get_observation_result_template(template_name, observation):
+def get_observation_result_template(template_name: str, observation: str) -> str:
 	if observation:
 		observation_doc = frappe.get_doc("Observation", observation)
 		patient_doc = frappe.get_doc("Patient", observation_doc.get("patient"))
@@ -479,14 +517,15 @@ def get_observation_result_template(template_name, observation):
 
 
 @frappe.whitelist()
-def set_observation_status(observation, status, reason=None, parent_obs=None):
+def set_observation_status(
+	observation: str, status: str, reason: str | None = None, parent_obs: str | None = None
+) -> None:
 	observation_doc = frappe.get_doc("Observation", observation)
 
-	if not (observation_doc.has_result() or observation_doc.has_component):
+	if not observation_doc.is_ready_for_approval():
+		if observation_doc.has_component:
+			frappe.throw(_("Please enter result for all components to Approve."))
 		frappe.throw(_("Please enter result to Approve."))
-
-	if observation_doc.has_component and not observation_doc.component_has_result():
-		frappe.throw(_("Please enter result for all components to Approve."))
 
 	observation_doc.status = status
 	if reason:
@@ -498,6 +537,7 @@ def set_observation_status(observation, status, reason=None, parent_obs=None):
 		if not observation_doc.has_component:
 			observation_doc.cancel()
 		new_doc = frappe.copy_doc(observation_doc)
+		new_doc.docstatus = 0
 		new_doc.status = ""
 		new_doc.disapproval_reason = ""
 		if parent_obs:
@@ -507,16 +547,64 @@ def set_observation_status(observation, status, reason=None, parent_obs=None):
 			parent_obs = new_doc.name
 
 	if observation_doc.has_component:
-		component_obs = frappe.db.get_all(
-			"Observation",
-			filters={"parent_observation": observation},
-			pluck="name",
-		)
-
-		for obs in component_obs:
+		for obs in get_component_observations(observation, status):
 			set_observation_status(obs, status, reason, parent_obs)
 		if status == "Rejected":
 			observation_doc.cancel()
+
+
+def get_component_observations(observation, status):
+	filters = {"parent_observation": observation}
+	if status == "Approved":
+		# already approved components are submitted, approving them again is not possible
+		filters.update({"status": ["!=", "Approved"], "docstatus": 0})
+
+	return frappe.db.get_all("Observation", filters=filters, pluck="name")
+
+
+@frappe.whitelist()
+def approve_all_observations(diagnostic_report: str) -> dict[str, list[str]]:
+	"""Approve every Observation of the report that has a result, skip the rest"""
+	approved, skipped = [], []
+
+	for observation in get_root_observations(diagnostic_report):
+		if observation.get("status") == "Approved" or observation.get("docstatus") != 0:
+			continue
+
+		observation_doc = frappe.get_doc("Observation", observation.get("name"))
+		if not observation_doc.is_ready_for_approval():
+			skipped.append(get_observation_label(observation_doc))
+			continue
+
+		set_observation_status(observation_doc.name, "Approved")
+		approved.append(observation_doc.name)
+
+	return {"approved": approved, "skipped": skipped}
+
+
+@frappe.whitelist()
+def reject_all_observations(diagnostic_report: str, reason: str) -> dict[str, list[str]]:
+	"""Reject every approved Observation of the report"""
+	if not reason:
+		frappe.throw(_("Please enter a reason to Reject."))
+
+	rejected, skipped = [], []
+
+	for observation in get_root_observations(diagnostic_report):
+		if observation.get("status") != "Approved":
+			skipped.append(get_observation_label(observation))
+			continue
+
+		set_observation_status(observation.get("name"), "Rejected", reason)
+		rejected.append(observation.get("name"))
+
+	return {"rejected": rejected, "skipped": skipped}
+
+
+def get_observation_label(observation_doc):
+	return (
+		observation_doc.preferred_display_name or observation_doc.observation_template or observation_doc.name
+	)
 
 
 def set_diagnostic_report_status(doc):

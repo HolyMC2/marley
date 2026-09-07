@@ -394,13 +394,13 @@ def create_inpatient_record(admission_order):
 
 
 @frappe.whitelist()
-def schedule_discharge(discharge_order):
+def schedule_discharge(discharge_order: str):
 	discharge_order = json.loads(discharge_order)
 	inpatient_record_id = frappe.db.get_value("Patient", discharge_order["patient"], "inpatient_record")
 
 	if inpatient_record_id:
 		inpatient_record = frappe.get_doc("Inpatient Record", inpatient_record_id)
-		check_out_inpatient(inpatient_record)
+
 		set_details_from_ip_order(inpatient_record, discharge_order)
 		inpatient_record.status = "Discharge Scheduled"
 		inpatient_record.save(ignore_permissions=True)
@@ -454,6 +454,7 @@ def discharge_patient(inpatient_record):
 
 	validate_incomplete_service_requests(inpatient_record)
 
+	check_out_inpatient(inpatient_record)
 	inpatient_record.discharge_datetime = now_datetime()
 	inpatient_record.status = "Discharged"
 
@@ -573,6 +574,7 @@ def get_unbilled_inpatient_docs(doc, inpatient_record):
 	if doc in ["Lab Test", "Clinical Procedure"]:
 		filters.update(
 			{
+				"docstatus": ["<", 2],
 				"service_request": "",
 			}
 		)
@@ -707,7 +709,9 @@ def cancel_amend_treatment_counselling(args, treatment_counselling):
 
 
 @frappe.whitelist()
-def make_discharge_summary(source_name, target_doc=None, ignore_permissions=False):
+def make_discharge_summary(
+	source_name: str, target_doc: Document | None = None, ignore_permissions: bool = False
+) -> Document:
 	doclist = get_mapped_doc(
 		"Inpatient Record",
 		source_name,
@@ -717,7 +721,7 @@ def make_discharge_summary(source_name, target_doc=None, ignore_permissions=Fals
 				"field_map": {
 					"name": "inpatient_record",
 				},
-				"field_no_map": ["status", "chief_complaint", "diagnosis"],
+				"field_no_map": ["naming_series", "status", "chief_complaint", "diagnosis"],
 			},
 		},
 		target_doc,
@@ -810,7 +814,7 @@ def set_total(self):
 
 
 def validate_incomplete_service_requests(inpatient_record):
-	if not frappe.db.get_single_value(
+	if frappe.db.get_single_value(
 		"Healthcare Settings", "allow_discharge_despite_pending_healthcare_services"
 	):
 		return
