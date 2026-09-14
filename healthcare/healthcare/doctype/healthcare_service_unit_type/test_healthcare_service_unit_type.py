@@ -13,6 +13,9 @@ class TestHealthcareServiceUnitType(HealthcareTestSuite):
 			"Healthcare Service Unit Type", {"service_unit_type": "_Test Inpatient Rooms"}
 		)
 		self.assertTrue(frappe.db.exists("Item", unit_type.item))
+		self.assertEqual(
+			frappe.db.get_value("Item", unit_type.item, "standard_rate"), unit_type.rate or 0.0
+		)
 
 		# check item disabled
 		unit_type.disabled = 1

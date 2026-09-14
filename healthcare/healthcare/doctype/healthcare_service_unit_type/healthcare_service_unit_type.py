@@ -123,13 +123,12 @@ def create_item(doc):
 	# insert item price
 	# get item price list to insert item price
 	price_list_name = frappe.db.get_value("Price List", {"selling": 1})
-	if doc.rate:
-		make_item_price(item.name, price_list_name, doc.rate)
-		item.standard_rate = doc.rate
-	else:
-		make_item_price(item.name, price_list_name, 0.0)
-		item.standard_rate = 0.0
-
+	rate = doc.rate or 0.0
+	make_item_price(item.name, price_list_name, rate)
+	# ERPNext's Item Price hook updates the persisted Item and its timestamp.
+	# Continue from that revision instead of saving the pre-price snapshot.
+	item.reload()
+	item.standard_rate = rate
 	item.save(ignore_permissions=True)
 
 	# Set item in the doc
