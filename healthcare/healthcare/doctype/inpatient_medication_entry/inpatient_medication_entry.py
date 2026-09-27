@@ -6,9 +6,8 @@ import datetime
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.query_builder.functions import Sum
 from frappe.utils import flt, get_link_to_form, get_time, getdate
-
-from erpnext.stock.utils import get_latest_stock_qty
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_account
 
@@ -302,16 +301,40 @@ def get_drug_shortage_map(medication_orders, warehouse):
 
 	drug_shortage = dict()
 	for drug, required_qty in drug_requirement.items():
-		available_qty = get_latest_stock_qty(drug, warehouse) or 0
+		available_qty = get_available_qty(drug, warehouse)
 		if flt(required_qty) > flt(available_qty):
 			drug_shortage[drug] = flt(flt(required_qty) - flt(available_qty))
 
 	return drug_shortage
 
 
+def get_available_qty(item_code, warehouse):
+	"""Bin quantity of a drug in the entry's own warehouse (and its children when it is a group).
+
+	Read directly rather than through erpnext's whitelisted get_latest_stock_qty, which checks
+	Item read on the session user since v16.36; Nursing User does not hold it and needs none
+	to consume the medication the entry already names."""
+	if not warehouse:
+		return 0
+	lft, rgt, is_group = frappe.db.get_value("Warehouse", warehouse, ["lft", "rgt", "is_group"])
+	warehouses = [warehouse]
+	if is_group:
+		warehouses = frappe.get_all(
+			"Warehouse", filters={"lft": [">=", lft], "rgt": ["<=", rgt]}, pluck="name"
+		)
+	bin_table = frappe.qb.DocType("Bin")
+	qty = (
+		frappe.qb.from_(bin_table)
+		.select(Sum(bin_table.actual_qty))
+		.where((bin_table.item_code == item_code) & (bin_table.warehouse.isin(warehouses)))
+	).run()[0][0]
+	return flt(qty)
+
+
 @frappe.whitelist()
 def make_difference_stock_entry(docname):
 	doc = frappe.get_doc("Inpatient Medication Entry", docname)
+	doc.check_permission("read")
 	drug_shortage = get_drug_shortage_map(doc.medication_orders, doc.warehouse)
 
 	if not drug_shortage:

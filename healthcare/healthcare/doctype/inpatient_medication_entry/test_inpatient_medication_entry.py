@@ -3,10 +3,13 @@
 
 
 import frappe
-from frappe.utils import add_days, getdate, now_datetime
+from frappe.utils import add_days, flt, getdate, now_datetime
+
+from erpnext.stock.utils import get_latest_stock_qty
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_account
 from healthcare.healthcare.doctype.inpatient_medication_entry.inpatient_medication_entry import (
+	get_available_qty,
 	get_drug_shortage_map,
 	make_difference_stock_entry,
 )
@@ -135,6 +138,45 @@ class TestInpatientMedicationEntry(HealthcareTestSuite):
 		ipme.reload()
 		ipme.submit()
 
+	def test_drug_shortage_without_item_read(self):
+		# erpnext v16.36 get_latest_stock_qty checks Item read, which Nursing User does not hold
+		ipmo = create_ipmo(self.patient)
+		ipmo.submit()
+		ipmo.reload()
+
+		date = add_days(getdate(), -1)
+		filters = frappe._dict(
+			from_date=date,
+			to_date=date,
+			from_time="",
+			to_time="",
+			item_code="Dextromethorphan",
+			patient=self.patient,
+		)
+		ipme = create_ipme(filters, update_stock=1)
+		ipme.warehouse = "Stores - _TC"
+		ipme.save()
+		make_stock_entry()
+
+		nurse = create_user("ipme-nurse@example.com", ["Nursing User"])
+		outsider = create_user("ipme-outsider@example.com", [])
+		self.assertFalse(frappe.has_permission("Item", "read", user=nurse))
+		try:
+			frappe.set_user(nurse)
+			drug_shortage = get_drug_shortage_map(ipme.medication_orders, ipme.warehouse)
+			frappe.set_user(outsider)
+			with self.assertRaises(frappe.PermissionError):
+				make_difference_stock_entry(ipme.name)
+		finally:
+			frappe.set_user("Administrator")
+
+		self.assertEqual(drug_shortage, {})
+		for warehouse in (ipme.warehouse, "All Warehouses - _TC"):
+			self.assertEqual(
+				get_available_qty("Dextromethorphan", warehouse),
+				flt(get_latest_stock_qty("Dextromethorphan", warehouse)),
+			)
+
 	def tearDown(self):
 		# cleanup - Discharge
 		schedule_discharge(frappe.as_json({"patient": self.patient}))
@@ -178,3 +220,17 @@ def make_stock_entry(warehouse=None):
 	se_child.conversion_factor = 1.0
 	se_child.expense_account = expense_account
 	stock_entry.submit()
+
+
+def create_user(email, roles):
+	if not frappe.db.exists("User", email):
+		frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": email,
+				"first_name": email.split("@")[0],
+				"send_welcome_email": 0,
+				"roles": [{"role": role} for role in roles],
+			}
+		).insert(ignore_permissions=True)
+	return email
