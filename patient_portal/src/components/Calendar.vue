@@ -6,7 +6,7 @@
 				class="text-gray-600 bg-blue-100 h-8 w-8 rounded-full hover:text-gray-800 flex items-center justify-center">
 				&lt;
 			</button>
-			<div class="text-lg font-semibold">{{ monthYear }}</div>
+			<div class="text-lg-semibold">{{ monthYear }}</div>
 			<button @click="nextMonth"
 				class="text-gray-600 bg-blue-100 h-8 w-8 rounded-full hover:text-gray-800 flex items-center justify-center">
 				&gt;
@@ -14,7 +14,7 @@
 		</div>
 
 		<!-- Weekdays -->
-		<div class="grid grid-cols-7 gap-0 text-center text-gray-600 text-sm mb-1 font-medium">
+		<div class="grid grid-cols-7 gap-0 text-center text-gray-600 text-sm-medium mb-1">
 			<div v-for="w in ['Su','Mo','Tu','We','Th','Fr','Sa']" :key="w"
 				:class="w==='Su'||w==='Sa' ? 'text-red-500' : ''">{{ w }}</div>
 		</div>

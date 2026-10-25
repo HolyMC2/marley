@@ -14,21 +14,15 @@
 		</div>
 	</div>
 
-	<Dialog :options="{
-		title: dialog_title,
-		message: dialog_message,
-		size: 'xl',
-		icon: {
-			name: 'alert-triangle',
-			appearance: 'warning',
-		},
-		actions: [
-			{
-				label: 'OK',
-				variant: 'solid',
-			},
-		],
-	}" v-model="alert_dialog" @click="alert_dialog = false" />
+	<Dialog
+		:title="dialog_title"
+		:message="dialog_message"
+		size="xl"
+		icon="lucide-triangle-alert"
+		theme="amber"
+		:actions="[{ label: 'OK', variant: 'solid' }]"
+		v-model="alert_dialog"
+	/>
 </template>
 
 <script setup>
@@ -44,7 +38,7 @@ import {
 
 let alert_dialog = ref(false);
 
-const portal_tabs = ref(0);
+const portal_tabs = ref('Appointments');
 
 let dialog_title = ref("");
 let dialog_message = ref("");
@@ -63,9 +57,9 @@ let getHealthcareSettings = createResource({
 getHealthcareSettings.fetch();
 
 const tabs = computed(() => {
-	let baseTabs = [{ label: 'Appointments' }]
+	let baseTabs = [{ label: 'Appointments', value: 'Appointments' }]
 	if (healthcareSettings.value.show_diagnostics_tab) {
-		baseTabs.push({ label: 'Diagnostics' })
+		baseTabs.push({ label: 'Diagnostics', value: 'Diagnostics' })
 	}
 	return baseTabs
 })

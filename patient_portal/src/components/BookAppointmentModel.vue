@@ -1,18 +1,15 @@
 <template>
-	<Dialog v-if="show && !minimized" v-model="show" :options="{
-		size: '6xl',
-	}" :disable-outside-click-to-close="true">
-		<template #body-title>
+	<Dialog v-if="show && !minimized" v-model="show" size="6xl" :dismissible="false">
+		<template #title>
 			<h3 class="text-ink-gray-8">Book an Appointment</h3>
 		</template>
-		<template #body-content>
-			<div class="flex flex-col h-[65vh] border-b">
+		<template #default>
+			<div ref="bookingBody" class="flex flex-col h-[65vh] border-b">
 				<div class="m-4" v-if="!success">
 					<Progress
 						size="lg"
 						:value="progressCount"
-						:intervals="true"
-						:interval-count="intervalCount"
+						:intervals="intervalCount"
 					/>
 				</div>
 
@@ -42,7 +39,7 @@
 					<!-- Booking View -->
 					<div
 						v-if="show_calendar && !booked"
-						class="grid gap-1 animate-fade-in h-[99%] grid-cols-1 md:grid-cols-3 lg:grid-cols-3 border border-gray-200 rounded-md"
+						class="grid gap-1 animate-fade-in h-[99%] grid-cols-1 md:grid-cols-3 lg:grid-cols-3 border border-gray-200 rounded-5"
 					>
 						<div class="flex flex-col items-center justify-center h-full min-h-[350px] border-r">
 							<div class="w-28 h-28 mb-3">
@@ -53,12 +50,12 @@
 								/>
 								<div
 									v-else
-									class="w-full h-full rounded-full flex items-center justify-center text-gray-700 text-3xl font-semibold bg-gray-100"
+									class="w-full h-full rounded-full flex items-center justify-center text-gray-700 text-4xl-semibold bg-gray-100"
 									>
 									{{ selectedPractitioner.practitioner_name.charAt(0).toUpperCase() }}
 								</div>
 							</div>
-							<div class="font-semibold text-lg">{{ selectedPractitioner.practitioner_name }}</div>
+							<div class="text-lg-semibold">{{ selectedPractitioner.practitioner_name }}</div>
 							<div class="text-sm text-gray-500">{{ selectedPractitioner.department }}</div>
 							<div class="text-sm text-gray-500">{{ selectedPractitioner.designation }}</div>
 
@@ -70,8 +67,9 @@
 
 							<div class="flex items-center justify-center w-full py-4">
 								<FormControl
-									v-model="selectedPatient"
-									type="autocomplete"
+									:model-value="selectedPatient?.value"
+									@update:model-value="(value) => (selectedPatient = patientOptions.find((option) => option.value === value) || {})"
+									type="combobox"
 									:options="patientOptions"
 									:placeholder="'Choose a patient'"
 									size="lg"
@@ -89,12 +87,12 @@
 						<div class="flex flex-col items-center justify-center h-full min-h-[350px]">
 							<div class="flex flex-col items-center justify-center w-full max-w-md">
 								<div v-if="slots && slots.length > 0" class="flex flex-col items-center py-3 px-4">
-									<h3 class="text-md font-semibold mb-3 text-center">Available Slots</h3>
+									<h3 class="text-md-semibold mb-3 text-center">Available Slots</h3>
 									<div class="flex justify-center mb-2 w-full">
 										<Select
 											:options="timezones"
 											v-model="selectedTimezone"
-											class="border border-gray-300 rounded-md px-2 py-1 text-sm w-full max-w-xs"
+											class="border border-gray-300 rounded-5 px-2 py-1 text-sm w-full max-w-xs"
 										/>
 									</div>
 								</div>
@@ -107,7 +105,7 @@
 								<div v-if="slots && slots.length > 0" class="overflow-y-auto max-h-80 px-4 py-2 w-full">
 									<div v-for="(group, label) in groupedSlots" :key="label">
 										<div v-if="group && group.length > 0" class="mb-4">
-											<h4 class="text-sm font-medium text-gray-600 mb-2">{{ label }}</h4>
+											<h4 class="text-sm-medium text-gray-600 mb-2">{{ label }}</h4>
 											<div class="grid grid-cols-4 sm:grid-cols-3 md:grid-cols-4 gap-2">
 												<Button
 													v-for="slot in group"
@@ -116,9 +114,9 @@
 													:label="slot.formattedTime"
 													:class="[
 														selectedSlot?.slot == slot.slot
-														? 'bg-surface-gray-5 text-white'
-														: 'bg-surface-white hover:bg-surface-gray-4 border shadow-sm',
-														'rounded-lg shadow-sm'
+														? 'bg-surface-gray-8 text-white'
+														: 'bg-surface-base hover:bg-surface-gray-4 border shadow-sm',
+														'rounded-6 shadow-sm'
 													]"
 													@click="selectedSlot = slot"
 												/>
@@ -139,8 +137,8 @@
 						/>
 					</div>
 					<div v-if="success" class="flex flex-col items-center justify-center h-[99%] text-center space-y-4 animate-fade-in">
-						<FeatherIcon name="check-circle" class="text-green-500 w-20 h-20" />
-						<h2 class="text-xl font-semibold text-gray-800">Payment Successful</h2>
+						<LucideCircleCheck class="text-green-500 w-20 h-20" />
+						<h2 class="text-2xl-semibold text-gray-800">Payment Successful</h2>
 						<p class="text-gray-600">Your appointment with {{ selectedPractitioner.practitioner_name }} has been confirmed.</p>
 					</div>
 				</div>
@@ -199,24 +197,14 @@
 		</template>
 	</Dialog>
 
-	<Dialog 
-		:options="{
-			title: dialog_title,
-			message: dialog_message,
-			size: 'xl',
-			icon: {
-				name: 'alert-triangle',
-				appearance: 'warning',
-			},
-			actions: [
-				{
-					label: 'OK',
-					variant: 'solid',
-				},
-			],
-		}"
+	<Dialog
+		:title="dialog_title"
+		:message="dialog_message"
+		size="xl"
+		icon="lucide-triangle-alert"
+		theme="amber"
+		:actions="[{ label: 'OK', variant: 'solid' }]"
 		v-model="alert_dialog"
-		@click="alert_dialog = false"
 	/>
 </template>
 
@@ -232,12 +220,16 @@ import {
 	toast,
 } from 'frappe-ui'
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import LucideCircleCheck from '~icons/lucide/circle-check'
 import DepartmentSelector from '@/components/DepartmentSelector.vue'
 import PractitionerSelector from '@/components/PractitionerSelector.vue'
 import Calendar from '@/components/Calendar.vue'
 import Payment from '@/components/Payment.vue'
+import { useEscapeCloses } from '@/utils/dialog'
 
 const show = defineModel();
+const bookingBody = ref(null)
+useEscapeCloses(bookingBody, () => (show.value = false))
 const selectedTimezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone)
 
 let departments = ref([]);

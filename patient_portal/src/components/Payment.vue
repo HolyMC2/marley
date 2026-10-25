@@ -2,33 +2,33 @@
 	<div class="h-full flex flex-col justify-center items-center px-2">
 		<!-- Header -->
 		<div class="text-center space-y-1">
-			<h2 class="text-2xl font-bold text-gray-900">Pay Your Bill</h2>
+			<h2 class="text-3xl-bold text-gray-900">Pay Your Bill</h2>
 			<p class="py-4 text-sm text-gray-500">Details of fees</p>
 		</div>
 
 		<!-- Fees Cards -->
 		<div class="py-2 space-y-4 w-full max-w-md">
 			<!-- Consultation Fee -->
-			<Card class="p-5 rounded-xl shadow-sm">
+			<Card class="p-5 rounded-7 shadow-sm">
 				<div class="flex justify-between items-center">
 					<div>
-						<h3 class="text-base font-semibold text-gray-800">Consultation Fee</h3>
+						<h3 class="text-base-semibold text-gray-800">Consultation Fee</h3>
 						<p class="py-2 text-sm text-gray-500">Consultation with {{ practitioner }}</p>
 					</div>
-					<div class="text-lg font-bold text-green-600">
+					<div class="text-lg-bold text-green-600">
 						{{ formatCurrency(consultationFee, currency) }}
 					</div>
 				</div>
 			</Card>
 
 			<!-- Registration Fee -->
-			<Card v-if="registrationFee > 0" class="p-5 rounded-xl shadow-sm">
+			<Card v-if="registrationFee > 0" class="p-5 rounded-7 shadow-sm">
 				<div class="flex justify-between items-center">
 					<div>
-						<h3 class="text-base font-semibold text-gray-800">Registration Fee</h3>
+						<h3 class="text-base-semibold text-gray-800">Registration Fee</h3>
 						<p class="text-sm text-gray-500">One-time registration for new patients</p>
 					</div>
-					<div class="text-lg font-bold text-blue-600">
+					<div class="text-lg-bold text-blue-600">
 						{{ formatCurrency(registrationFee, currency) }}
 					</div>
 				</div>
@@ -36,8 +36,8 @@
 
 			<!-- Divider + Total -->
 			<div class="border-t py-4 flex justify-between items-center">
-				<span class="text-lg font-semibold text-gray-800">Total</span>
-				<span class="text-xl font-bold text-gray-900">
+				<span class="text-lg-semibold text-gray-800">Total</span>
+				<span class="text-2xl-bold text-gray-900">
 					{{ formatCurrency(totalAmount, currency) }}
 				</span>
 			</div>
@@ -50,7 +50,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Card, ErrorMessage } from 'frappe-ui'
+import { ErrorMessage } from 'frappe-ui'
+import Card from '@/components/Card.vue'
 import { formatCurrency } from "@/utils/formatters"
 
 const practitioner = defineModel('practitioner')

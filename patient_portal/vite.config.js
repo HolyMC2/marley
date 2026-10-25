@@ -24,7 +24,8 @@ export default defineConfig({
     },
   },
   build: {
-    manifest: true,
+    // vite 5 defaults to .vite/manifest.json; www/patient-portal/index.py reads manifest.json
+    manifest: 'manifest.json',
     outDir: path.resolve(__dirname, "../healthcare/public/patient_portal/assets"),
 		emptyOutDir: true,
     rollupOptions: {
@@ -35,7 +36,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: [
-      'frappe-ui > feather-icons',
       "tailwind.config.js",
       'engine.io-client',
     ],

@@ -7,7 +7,7 @@
 				@click="make_appointment_dialog = true"
 			>
 				<template #prefix>
-					<FeatherIcon name="plus" class="h-4" />
+					<LucidePlus class="size-4" />
 				</template>
 			</Button>
 		</div>
@@ -20,29 +20,29 @@
 					<Card
 						v-for="item in paginatedAppointments"
 						:key="item.name"
-						class="cursor-pointer rounded-xl border border-gray-200 transition-transform
+						class="cursor-pointer rounded-7 border border-gray-200 transition-transform
 							hover:scale-105 duration-200 hover:drop-shadow-md p-2 bg-suface-white
 							min-h-[170px] min-w-[240px] !shadow-none drop-shadow-xl"
 						@click="appointmentDetails(item)"
 					>
 						<div class="flex items-center justify-between whitespace-nowrap">
-							<h3 class="text-xs font-medium text-gray-500 truncate">{{ item.name }}</h3>
+							<h3 class="text-xs-medium text-gray-500 truncate">{{ item.name }}</h3>
 							<Badge :variant="'outline'"
 								:theme="getStatusColor(item.status)">
 								{{ item.status }}
 							</Badge>
 						</div>
 
-						<p class="mt-2 text-md font-semibold text-gray-800 truncate">
+						<p class="mt-2 text-md-semibold text-gray-800 truncate">
 							{{ item.title }}
 						</p>
 
 						<p class="mt-1 mb-1 text-xs text-gray-600 leading-snug break-words whitespace-normal">
-							<FeatherIcon name="calendar" class="inline w-3 h-3 mr-1 text-gray-500" />
+							<LucideCalendar class="inline w-3 h-3 mr-1 text-gray-500" />
 							{{ formatDate(item.appointment_date) }}
 						</p>
 						<p class="mt-1 text-xs text-gray-600 whitespace-nowrap">
-							<FeatherIcon name="clock" class="inline w-3 h-3 mr-1 text-gray-500" />
+							<LucideClock class="inline w-3 h-3 mr-1 text-gray-500" />
 							{{ item.appointment_time }} ({{ item.duration }} mins)
 						</p>
 					</Card>
@@ -53,8 +53,8 @@
 				v-else
 				class="flex flex-col items-center justify-center flex-grow text-center p-6"
 			>
-				<FeatherIcon name="file-text" class="w-12 h-12 text-gray-400 mb-3" />
-				<h2 class="text-lg font-semibold text-gray-700">No Records Found</h2>
+				<LucideFileText class="w-12 h-12 text-gray-400 mb-3" />
+				<h2 class="text-lg-semibold text-gray-700">No Records Found</h2>
 				<p class="text-sm text-gray-500">Looks like you don't have any appointments yet.</p>
 			</div>
 
@@ -81,12 +81,10 @@
 		@appointment_booked="get_appointments.reload()"
 	/>
 
-	<Dialog v-model="appointment_details" :options="{
-		size: '4xl',
-	}">
-		<template #body-title>
+	<Dialog v-model="appointment_details" size="4xl">
+		<template #title>
 			<div>
-				<h2 class="text-xl font-semibold text-gray-900">Appointment Details</h2>
+				<h2 class="text-2xl-semibold text-gray-900">Appointment Details</h2>
 			</div>
 			<div class="py-2 flex items-center justify-between gap-2">
 				<p class="text-sm text-gray-500"># {{ selectedAppointment.name }}</p>
@@ -98,20 +96,20 @@
 				</Badge>
 			</div>
 		</template>
-		<template #body-content>
-			<div class="rounded-xl shadow-sm py-2 bg-gray-50">
+		<template #default>
+			<div class="rounded-7 shadow-sm py-2 bg-gray-50">
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:[&>section]:h-full">
 					<section class="md:col-start-1 md:row-start-1">
 						<div class="flex items-start gap-4 px-2">
 							<img v-if="selectedAppointment.patient_image" :src="selectedAppointment.patient_image"
 								class="w-20 h-20 rounded-full object-cover border" />
 							<div v-else
-								class="w-20 h-20 rounded-full flex items-center justify-center text-gray-700 text-2xl font-semibold border">
+								class="w-20 h-20 rounded-full flex items-center justify-center text-gray-700 text-3xl-semibold border">
 								{{ selectedAppointment.patient_name?.charAt(0)?.toUpperCase() }}
 							</div>
 							<div>
 								<h3 class="text-gray-700 font-medium">Patient</h3>
-								<p class="mt-1 text-lg font-semibold text-gray-900">
+								<p class="mt-1 text-lg-semibold text-gray-900">
 									{{ selectedAppointment.patient_name }}
 								</p>
 								<p class="mt-1 text-sm text-gray-600">
@@ -124,7 +122,7 @@
 					<section class="md:col-start-2 md:row-start-1">
 						<div>
 							<h3 class="text-gray-700 font-medium">When</h3>
-							<p class="mt-1 text-lg font-semibold text-gray-900">
+							<p class="mt-1 text-lg-semibold text-gray-900">
 								{{ formatDate(selectedAppointment.appointment_date) }}
 							</p>
 							<p class="mt-1 text-sm text-gray-600">
@@ -139,12 +137,12 @@
 								:src="selectedAppointment.practitioner_image"
 								class="w-20 h-20 rounded-full object-cover border" />
 							<div v-else
-								class="w-20 h-20 rounded-full flex items-center justify-center text-gray-700 text-2xl font-semibold border">
+								class="w-20 h-20 rounded-full flex items-center justify-center text-gray-700 text-3xl-semibold border">
 								{{ selectedAppointment.practitioner_name?.charAt(0)?.toUpperCase() }}
 							</div>
 							<div>
 								<h3 class="text-gray-700 font-medium">Practitioner</h3>
-								<p class="mt-1 text-lg font-semibold text-gray-900">
+								<p class="mt-1 text-lg-semibold text-gray-900">
 									{{ selectedAppointment.practitioner_name }}
 								</p>
 								<p class="mt-1 text-sm text-gray-600">
@@ -165,15 +163,15 @@
 									</Badge>
 									<Button v-if="selectedAppointment.ref_sales_invoice" :ref_for="true" theme="gray" size="md"
 										@click="print('Sales Invoice', selectedAppointment.ref_sales_invoice)">
-										<Tooltip :text="'Print Invoice'" placement="top">
+										<Tooltip :text="'Print Invoice'" side="top">
 											<slot name="icon">
-												<FeatherIcon :name="'printer'" class="size-4 text-ink-white-7" />
+												<LucidePrinter class="size-4 text-ink-white-7" />
 											</slot>
 										</Tooltip>
 									</Button>
 								</div>
 							</div>
-							<p class="mt-1 text-lg font-semibold text-gray-900">
+							<p class="mt-1 text-lg-semibold text-gray-900">
 								{{ formatCurrency(selectedAppointment.paid_amount, selectedAppointment.default_currency) }}
 							</p>
 							<p v-if="selectedAppointment.ref_sales_invoice" class="mt-1 text-sm text-gray-600">
@@ -188,14 +186,14 @@
 							<div>
 								<h3 class="text-gray-700 font-medium">Prescription ID</h3>
 								<div class="flex items-center justify-between gap-10">
-									<p class="mt-1 text-lg font-semibold text-gray-900">
+									<p class="mt-1 text-lg-semibold text-gray-900">
 										{{ selectedAppointment.encounter }}
 									</p>
 									<Button :ref_for="true" theme="gray" size="md"
 										@click="print('Patient Encounter', selectedAppointment.encounter)">
-										<Tooltip :text="'Print Prescription'" placement="top">
+										<Tooltip :text="'Print Prescription'" side="top">
 											<slot name="icon">
-												<FeatherIcon :name="'printer'" class="size-4 text-ink-white-7" />
+												<LucidePrinter class="size-4 text-ink-white-7" />
 											</slot>
 										</Tooltip>
 									</Button>
@@ -208,26 +206,26 @@
 		</template>
 	</Dialog>
 
-	<Dialog :options="{
-		title: dialog_title,
-		message: dialog_message,
-		size: 'xl',
-		icon: {
-			name: 'alert-triangle',
-			appearance: 'warning',
-		},
-		actions: [
-			{
-				label: 'OK',
-				variant: 'solid',
-			},
-		],
-	}" v-model="alert_dialog" @click="alert_dialog = false" />
+	<Dialog
+		:title="dialog_title"
+		:message="dialog_message"
+		size="xl"
+		icon="lucide-triangle-alert"
+		theme="amber"
+		:actions="[{ label: 'OK', variant: 'solid' }]"
+		v-model="alert_dialog"
+	/>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import LucideCalendar from '~icons/lucide/calendar'
+import LucideClock from '~icons/lucide/clock'
+import LucideFileText from '~icons/lucide/file-text'
+import LucidePlus from '~icons/lucide/plus'
+import LucidePrinter from '~icons/lucide/printer'
 import BookAppointmentModel from '@/components/BookAppointmentModel.vue'
+import Card from '@/components/Card.vue'
 import { formatCurrency } from "@/utils/formatters"
 
 import {
@@ -349,7 +347,7 @@ const getStatusColor = (status) => {
 		case "Open":
 		case "Checked Out":
 		case "Scheduled":
-			return "orange"
+			return "amber"
 		case "Cancelled":
 			return "red"
 		case "Checked In":
